@@ -1,0 +1,121 @@
+<!-- =========================================
+FILE 1: PRIVMATE SETTLEMENT DASHBOARD (admin.html)
+FEATURES:
+- 100% Complete Sheet Core Grid Layout
+- Pure Cloud PostgreSQL Database Mapping
+- Live Target URL: https://railway.app
+========================================= -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Merlin Mines - Secure Settlement Dashboard</title>
+<style>
+    body { background: #030b08; color: #fff; font-family: Arial, sans-serif; padding: 40px; }
+    h1 { color: #00ff99; text-shadow: 0 0 15px #00ff99; margin-bottom: 5px; }
+    .subtitle { color: #a5b5ae; margin-bottom: 30px; font-size: 14px; }
+    .btn-panel { margin-bottom: 25px; display: flex; gap: 15px; }
+    button { padding: 14px 24px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s; }
+    .btn-download { background: #00ff99; color: #020705; box-shadow: 0 0 15px rgba(0,255,153,0.3); }
+    .btn-download:hover { transform: translateY(-2px); box-shadow: 0 0 25px #00ff99; }
+    .btn-clear { background: #ff3b3b; color: #fff; box-shadow: 0 0 15px rgba(255,59,59,0.2); }
+    .btn-clear:hover { background: #d62828; transform: translateY(-2px); }
+    table { width: 100%; border-collapse: collapse; background: #0b1712; border: 1px solid rgba(0,255,153,0.3); border-radius: 12px; overflow: hidden; }
+    th, td { padding: 16px; text-align: left; border-bottom: 1px solid rgba(0,255,153,0.1); }
+    th { background: #07140f; color: #00ff99; font-weight: bold; }
+    tr:hover { background: rgba(0,255,153,0.03); }
+</style>
+</head>
+<body>
+
+<h1>🔒 Settlement Dashboard</h1>
+<p class="subtitle">Internal ledger system tracking nightly player remittances and platform system commissions.</p>
+
+<div class="btn-panel">
+    <button class="btn-download" onclick="downloadPayoutCSV()">📊 Download Nightly Excel Sheet</button>
+    <button class="btn-clear" onclick="clearProcessedList()">🧹 Mark All Settled & Clear Screen</button>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Match Reference</th>
+            <th>Player Phone (ID)</th>
+            <th>Room Category</th>
+            <th>House Commission (20%)</th>
+            <th>Remittance Due (80%)</th>
+            <th>Timestamp Log</th>
+        </tr>
+    </thead>
+    <tbody id="tableBody">
+        <tr>
+            <td colspan="6" style="text-align:center; color:#a5b5ae; padding:30px;">Loading active server ledger rows...</td>
+        </tr>
+    </tbody>
+</table>
+
+<script>
+const LIVE_SERVER_URL = "https://railway.app";
+
+window.onload = function() {
+    fetch(`${LIVE_SERVER_URL}/api/admin/remittances`)
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = "";
+            
+            if (!data.records || data.records.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#a5b5ae; padding:30px;">No pending payouts recorded for tonight.</td></tr>`;
+                return;
+            }
+            
+            data.records.forEach(row => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>#${row.match_id}</strong></td>
+                        <td>${row.phone}</td>
+                        <td>${row.room_cleared}</td>
+                        <td style="color:#ffee00;">KSh ${row.house_profit}</td>
+                        <td style="color:#00ff99; font-weight:bold;">KSh ${row.payout_amount}</td>
+                        <td>${row.timestamp}</td>
+                    </tr>`;
+            });
+        })
+        .catch(err => {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ff3b3b; padding:30px;">Failed to connect to backend engine. Confirm live cloud parameters!</td></tr>`;
+        });
+};
+
+function downloadPayoutCSV() {
+    fetch(`${LIVE_SERVER_URL}/api/admin/remittances`)
+        .then(res => res.json())
+        .then(data => {
+            if (!data.records || data.records.length === 0) {
+                alert("The ledger is empty. No rows to download!");
+                return;
+            }
+            
+            let csv = "Phone Number,Payout Amount (KES),Reference Remarks\n";
+            data.records.forEach(row => {
+                csv += `${row.phone},${row.payout_amount},Ref #${row.match_id}\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Nightly_Remittance_Sheet.csv`;
+            link.click();
+        });
+}
+
+function clearProcessedList() {
+    if (confirm("Permanently archive these records and clear your current dashboard screen?")) {
+        fetch(`${LIVE_SERVER_URL}/api/admin/clear-remittances`, { method: 'POST' })
+            .then(() => window.location.reload());
+    }
+}
+</script>
+</body>
+</html>
